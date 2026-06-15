@@ -37,6 +37,9 @@ DB_CONFIG = {
     "dbname": get_secret("LDAS_POSTGRES_DATABASE"),
     "user": get_secret("LDAS_POSTGRES_USER"),
     "password": get_secret("LDAS_POSTGRES_PASSWORD"),
+    # Neon 등 클라우드 PostgreSQL은 SSL 연결이 필수다. 기본값 require.
+    # 사내 DB처럼 SSL이 없는 경우 secret으로 "disable" 등을 지정해 덮어쓸 수 있다.
+    "sslmode": get_secret("LDAS_POSTGRES_SSLMODE", "require"),
 }
 
 # DB 컬럼명 <-> 화면 표시용 한글 컬럼명 매핑
