@@ -26,7 +26,7 @@ def get_secret(key, default=None):
 # 페이지 설정
 st.set_page_config(page_title="미니 토토 대시보드", page_icon="⚽", layout="wide")
 
-st.title("⚽ 부산운영팀 월드컵 미니 토토 대시보드 🇰🇷vs🇲🇽")
+st.title("⚽ 부산구축팀 월드컵 미니 토토 대시보드 🇰🇷vs🇲🇽")
 st.markdown("한국과 멕시코 경기의 스코어를 예측하고 상금을 차지하세요!")
 
 
@@ -127,7 +127,7 @@ with st.sidebar:
         with col2:
             mx_score = st.number_input("🇲🇽 멕시코 스코어", min_value=0, step=1)
 
-        bet_amount = st.number_input("베팅 금액 (원)", min_value=1000, step=1000, value=5000)
+        bet_amount = st.number_input("베팅 금액 (원)", min_value=1000, step=1000, value=10000)
 
         submitted = st.form_submit_button("예측 제출")
         if submitted and name:
