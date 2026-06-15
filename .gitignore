@@ -1,0 +1,13 @@
+# 비밀 정보 (절대 GitHub에 올리면 안 됨) ---
+.env
+.streamlit/secrets.toml
+
+# 로그 / 임시 파일
+*.log
+__pycache__/
+*.pyc
+.playwright-mcp/
+
+# OS
+.DS_Store
+Thumbs.db
