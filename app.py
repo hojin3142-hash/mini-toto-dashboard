@@ -65,7 +65,6 @@ COLUMN_MAP = {
     "kr_score": "한국_스코어",
     "za_score": "남아공_스코어",
     "bet_amount": "베팅금액",
-    "updated_at": "수정시각",
 }
 
 
@@ -96,8 +95,7 @@ def init_db():
                     kr_score INT,
                     za_score INT,
                     bet_amount INT,
-                    created_at TIMESTAMP DEFAULT NOW(),
-                    updated_at TIMESTAMP
+                    created_at TIMESTAMP DEFAULT NOW()
                 );
                 """
             )
@@ -115,11 +113,6 @@ def init_db():
             if cur.fetchone():
                 cur.execute("ALTER TABLE toto_bets RENAME COLUMN mx_score TO za_score;")
                 cur.execute("DELETE FROM toto_bets;")  # 등록된 스코어 전체 리셋
-
-            # 수정 시각 기록용 컬럼 (구버전 테이블에 없을 수 있으므로 보강)
-            cur.execute(
-                "ALTER TABLE toto_bets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;"
-            )
         conn.commit()
     return True
 
@@ -138,42 +131,13 @@ def insert_bet(name, kr_score, za_score, bet_amount):
         conn.commit()
 
 
-def update_bet(bet_id, kr_score, za_score, bet_amount):
-    """기존 베팅의 스코어/베팅금액을 수정하고 수정 시각(updated_at)을 기록한다."""
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE toto_bets
-                SET kr_score = %s, za_score = %s, bet_amount = %s, updated_at = NOW()
-                WHERE id = %s;
-                """,
-                (kr_score, za_score, bet_amount, bet_id),
-            )
-        conn.commit()
-
-
-def get_bet_records():
-    """수정 화면용: id를 포함한 전체 베팅 레코드 리스트를 반환한다."""
-    with get_connection() as conn:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                """
-                SELECT id, name, kr_score, za_score, bet_amount
-                FROM toto_bets
-                ORDER BY id ASC;
-                """
-            )
-            return cur.fetchall()
-
-
 def get_bets():
     """DB에서 모든 베팅을 SELECT 하여 화면 표시용 DataFrame으로 반환한다."""
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT name, kr_score, za_score, bet_amount, updated_at
+                SELECT name, kr_score, za_score, bet_amount
                 FROM toto_bets
                 ORDER BY id ASC;
                 """
@@ -181,7 +145,7 @@ def get_bets():
             rows = cur.fetchall()
 
     df = pd.DataFrame(
-        rows, columns=["name", "kr_score", "za_score", "bet_amount", "updated_at"]
+        rows, columns=["name", "kr_score", "za_score", "bet_amount"]
     )
     # DB 컬럼명을 화면 표시용 한글 컬럼명으로 변경
     df = df.rename(columns=COLUMN_MAP)
@@ -216,49 +180,9 @@ with st.sidebar:
             insert_bet(name, int(kr_score), int(za_score), int(bet_amount))
             st.success(f"{name}님의 예측이 등록되었습니다!")
 
-    # --- 등록된 예측 수정하기 ---
+    # 한번 등록한 예측은 수정할 수 없도록 수정 기능을 제거했다.
     st.markdown("---")
-    st.header("✏️ 예측 수정하기")
-    records = get_bet_records()
-    if records:
-        # 참가자를 선택하면(폼 밖이라 즉시 리런) 현재 값이 폼에 채워진다.
-        options = {f"{r['name']} (#{r['id']})": r for r in records}
-        selected_label = st.selectbox("수정할 참가자 선택", list(options.keys()))
-        rec = options[selected_label]
-
-        with st.form("edit_form"):
-            ecol1, ecol2 = st.columns(2)
-            with ecol1:
-                # key에 id를 포함해 참가자를 바꾸면 현재 값으로 다시 채워지도록 한다.
-                e_kr = st.number_input(
-                    "🇰🇷 한국 스코어",
-                    min_value=0,
-                    step=1,
-                    value=int(rec["kr_score"]),
-                    key=f"edit_kr_{rec['id']}",
-                )
-            with ecol2:
-                e_za = st.number_input(
-                    "🇿🇦 남아공 스코어",
-                    min_value=0,
-                    step=1,
-                    value=int(rec["za_score"]),
-                    key=f"edit_za_{rec['id']}",
-                )
-
-            e_bet = st.number_input(
-                "베팅 금액 (원)",
-                min_value=1000,
-                step=1000,
-                value=int(rec["bet_amount"]),
-                key=f"edit_bet_{rec['id']}",
-            )
-
-            if st.form_submit_button("수정 저장"):
-                update_bet(rec["id"], int(e_kr), int(e_za), int(e_bet))
-                st.success(f"{rec['name']}님의 예측이 수정되었습니다!")
-    else:
-        st.caption("수정할 등록 예측이 없습니다.")
+    st.caption("⚠️ 한번 등록한 예측은 수정할 수 없습니다. 신중하게 입력해 주세요.")
 
 # --- 메인 화면: 탭 구성 ---
 tab1, tab2 = st.tabs(["📊 현재 참여 현황", "🏆 경기 결과 정산"])
@@ -337,11 +261,6 @@ def render_status():
             df.apply(
                 lambda x: get_result_label(x["한국_스코어"], x["남아공_스코어"]), axis=1
             ),
-        )
-
-        # 수정 시각은 보기 좋게 문자열로 변환 (수정 이력이 없으면 '-')
-        df["수정시각"] = df["수정시각"].apply(
-            lambda x: x.strftime("%Y-%m-%d %H:%M") if pd.notna(x) else "-"
         )
 
         # 한국/남아공 컬럼 헤더에 국기 이미지를 넣기 위해 HTML 표로 출력한다.
